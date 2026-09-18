@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RCTF Interactive Challenge</title>
+<style>
+:root{
+  --bg:#08111f; --panel:#101d31; --panel2:#162740; --text:#f5f7fb;
+  --muted:#aebbd0; --accent:#5eead4; --accent2:#60a5fa; --good:#4ade80;
+  --bad:#fb7185; --gold:#fbbf24; --line:#2a3a53;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; font-family:Inter,Segoe UI,Arial,sans-serif;
+  overflow-x:hidden;
+  color:var(--text); background:
+  radial-gradient(circle at 15% 10%,#173c5d 0,transparent 30%),
+  radial-gradient(circle at 85% 15%,#26315f 0,transparent 28%),
+  linear-gradient(135deg,#07101d,#0b1424 55%,#111b30);
+}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:1050px;margin:auto;padding:28px 18px 50px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}
+.brand{font-weight:800;letter-spacing:.4px;font-size:20px}
+.badge{padding:8px 12px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:13px}
+.card{
+  background:rgba(16,29,49,.9);
+  animation:slideIn .55s ease both; border:1px solid var(--line); border-radius:24px;
+  padding:28px; box-shadow:0 20px 60px rgba(0,0,0,.28); backdrop-filter:blur(8px)
+}
+h1{font-size:clamp(30px,5vw,52px);margin:0 0 10px;line-height:1.05}
+h2{margin-top:0;font-size:28px}
+h3{margin-bottom:8px}
+.sub{color:var(--muted);font-size:17px;line-height:1.6}
+.rtl{direction:rtl;text-align:right}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}.card{padding:21px}}
+.field{margin:18px 0}
+label{display:block;font-weight:700;margin-bottom:8px}
+
+input,textarea{
+  width:100%; background:#0a1627; color:var(--text); border:1px solid #33445e;
+  border-radius:13px; padding:13px 14px; outline:none
+}
+input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(94,234,212,.1)}
+textarea{min-height:120px;resize:vertical}
+.btn{
+  border:0;border-radius:13px;padding:13px 18px;font-weight:800;
+  color:#06111d;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 10px 25px rgba(96,165,250,.2)
+}
+.btn.secondary{color:var(--text);background:#1b2a42;border:1px solid #33445e;box-shadow:none}
+.btn.danger{background:linear-gradient(135deg,#fb7185,#f97316);color:white}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+.hidden{display:none!important}
+.rctf{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}
+@media(max-width:700px){.rctf{grid-template-columns:repeat(2,1fr)}}
+.rbox{background:#0b1729;border:1px solid var(--line);border-radius:16px;padding:17px}
+.letter{font-size:26px;font-weight:900;color:var(--accent)}
+.en{font-weight:800;margin:5px 0}
+.ar{direction:rtl;color:var(--muted)}
+.taskbox{background:#0c1829;border:1px solid #30415b;border-radius:18px;padding:18px;margin-top:18px}
+.task-list{line-height:1.8;color:#dbe5f4}
+.progress-wrap{height:9px;background:#0a1627;border-radius:20px;overflow:hidden;margin:16px 0 22px}
+.progress{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;transition:.3s}
+
+.quiz-head{display:flex;justify-content:space-between;align-items:center;gap:15px}
+.timer{
+  min-width:82px;text-align:center;padding:10px 12px;border-radius:14px;
+  background:#0a1627;border:1px solid var(--line);font-weight:900;color:var(--gold)
+}
+.timer.warning{color:#fb7185;animation:pulse .7s infinite alternate}
+@keyframes pulse{to{transform:scale(1.05)}}
+@keyframes slideIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes popIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 rgba(94,234,212,0)}50%{box-shadow:0 0 28px rgba(94,234,212,.22)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.option{animation:popIn .35s ease both}
+.option:nth-child(2){animation-delay:.05s}.option:nth-child(3){animation-delay:.1s}.option:nth-child(4){animation-delay:.15s}
+#start .btn{animation:glow 2.4s infinite}
+.shake{animation:shake .35s ease}
+.qnum{color:var(--accent);font-weight:900;font-size:14px;letter-spacing:1px}
+.question{font-size:23px;font-weight:800;line-height:1.45;margin:12px 0}
+.question-ar{font-size:19px;direction:rtl;text-align:right;color:#cbd6e7;line-height:1.5;margin-bottom:20px}
+.options{display:grid;gap:11px}
+.option{
+  width:100%;text-align:left;padding:15px;border-radius:15px;background:#0c1829;
+  color:var(--text);border:1px solid #344760;transition:.2s
+}
+.option:hover{border-color:var(--accent2);transform:translateY(-1px)}
+.option.correct{border-color:var(--good);background:rgba(74,222,128,.11)}
+.option.wrong{border-color:var(--bad);background:rgba(251,113,133,.11)}
+.option:disabled{cursor:default}
+.feedback{margin-top:17px;border-radius:15px;padding:15px;line-height:1.55}
+.feedback.good{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.35)}
+.feedback.bad{background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.35)}
+.feedback strong{display:block;margin-bottom:5px}
+
+.result{text-align:center}
+.score-ring{
+ width:170px;height:170px;border-radius:50%;margin:18px auto;display:grid;place-items:center;
+ background:conic-gradient(var(--accent) var(--score),#26364f 0);
+ position:relative
+}
+.score-ring:after{content:"";position:absolute;inset:11px;background:#101d31;border-radius:50%}
+.score-inner{position:relative;z-index:1;font-size:35px;font-weight:900}
+.result-name{font-size:25px;font-weight:800}
+.stat{display:inline-block;padding:12px 17px;margin:6px;border:1px solid var(--line);border-radius:14px;background:#0b1729}
+.success{color:var(--good);font-weight:900}
+.retry{color:var(--bad);font-weight:900}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.confetti i{position:absolute;width:9px;height:18px;top:-30px;animation:fall 3.5s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+.small{font-size:13px;color:var(--muted)}
+.nav{display:flex;gap:8px;margin-bottom:16px}
+.nav span{flex:1;height:5px;border-radius:8px;background:#25354d}
+.nav span.active{background:var(--accent)}
+
+/* ================= EDULIXA 360 THEME ================= */
+:root{
+  --bg:#f4f8f9;
+  --panel:#ffffff;
+  --panel2:#ffffff;
+  --text:#243238;
+  --muted:#66757b;
+  --accent:#0f6b61;
+  --accent2:#15927f;
+  --good:#2f9e67;
+  --bad:#e85d4f;
+  --gold:#f2ad20;
+  --line:#dce4e5;
+  --soft:#eef7f5;
+  --header:#073f38;
+  --header2:#116e62;
+}
+html{background:var(--bg)}
+body{
+  margin:0;min-height:100vh;font-family:Inter,Segoe UI,Arial,sans-serif;
+  overflow-x:hidden;color:var(--text);
+  background:
+    radial-gradient(circle at 8% 25%,rgba(21,146,127,.06),transparent 24%),
+    radial-gradient(circle at 92% 30%,rgba(242,173,32,.05),transparent 22%),
+    linear-gradient(180deg,#f8fafb 0%,#f2f7f8 100%);
+}
+
+/* RTL Support for Arabic Mode */
+body.ar-mode {
+    font-family: 'Cairo', 'Segoe UI', Arial, sans-serif;
+    direction: rtl;
+}
+
+.app{max-width:1100px;margin:auto;padding:0 18px 55px}
+
+.edulixa-header{
+  min-height:88px;margin:0 -18px 0;padding:18px 28px 15px;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  color:#fff;background:linear-gradient(110deg,var(--header),var(--header2));
+  border-bottom:3px solid #e85d4f;box-shadow:0 5px 18px rgba(7,63,56,.13);
+}
+.brand-block{display:flex;align-items:center;gap:12px}
+.logo-mark{
+  width:52px;height:52px;border-radius:15px;background:#fff;
+  display:grid;place-items:center;font-size:27px;box-shadow:0 4px 10px rgba(0,0,0,.12)
+}
+.brand-main{font-size:19px;font-weight:900;letter-spacing:.1px}
+.brand-sub{font-size:11px;font-weight:600;opacity:.82;margin-top:2px}
+.quest-badge{
+  display:inline-block;margin-left:5px;padding:3px 6px;border-radius:6px;
+  background:#ef6759;color:#fff;font-size:9px;vertical-align:middle
+}
+body.ar-mode .quest-badge { margin-left: 0; margin-right: 5px; }
+.header-actions{display:flex;align-items:center;gap:9px}
+.icon-btn,.lang-btn,.level-badge{
+  border:1px solid rgba(255,255,255,.18);color:#fff;background:rgba(255,255,255,.08);
+  border-radius:12px;padding:9px 12px
+}
+.icon-btn{width:39px;height:39px;padding:0;font-size:17px}
+.lang-btn{font-size:12px}
+.level-badge{display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.12)}
+.level-badge span{display:flex;flex-direction:column;line-height:1.1}
+.level-badge small{font-size:8px;opacity:.75}
+.level-badge b{font-size:10px;color:#ffe28b}
+
+.score-bar{
+  position:relative;z-index:3;margin:-1px auto 18px;max-width:900px;
+  min-height:58px;padding:10px 13px;display:flex;align-items:center;gap:10px;
+  background:#fff;border:1px solid #dce4e5;border-radius:17px;
+  box-shadow:0 9px 24px rgba(35,55,60,.13)
+}
+
+.score-chip{
+  padding:9px 12px;border:1px solid #bfe8df;border-radius:11px;
+  background:#f2fbf9;color:#26383a;font-size:12px;white-space:nowrap
+}
+.score-chip span{color:#5d6d72;margin-left:3px}
+body.ar-mode .score-chip span { margin-left: 0; margin-right: 3px; }
+.score-chip b{color:var(--accent)}
+.score-chip.streak{border-color:#f1dfb3;background:#fffaf0}
+.score-chip.streak b{color:#b77a00}
+.xp-area{flex:1;min-width:130px;padding:0 4px}
+.xp-label{display:flex;justify-content:space-between;color:#7b8588;font-size:9px;margin-bottom:5px}
+.xp-track{height:7px;border-radius:20px;background:#e6e9ea;overflow:hidden}
+.xp-fill{height:100%;width:0;background:linear-gradient(90deg,#54bda9,#0f6b61);border-radius:20px;transition:.35s}
+body.ar-mode .xp-fill { transform-origin: right; float: right;}
+.reset-round{
+  border:0;background:#f4f6f6;color:#425155;border-radius:11px;
+  padding:9px 11px;font-size:10px;font-weight:800;white-space:nowrap
+}
+.card{
+  background:#fff;animation:slideIn .55s ease both;border:1px solid #dce4e5;
+  border-radius:20px;padding:28px;box-shadow:0 8px 25px rgba(39,60,65,.08);
+  backdrop-filter:none
+}
+h1{font-size:clamp(28px,5vw,46px);margin:0 0 9px;line-height:1.05;color:#26383b}
+h2{margin-top:0;font-size:26px}
+h3{margin-bottom:8px}
+.sub{color:#68787d;font-size:16px;line-height:1.6}
+.badge{padding:7px 11px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}
+.field{margin:18px 0}
+label{display:block;font-weight:800;margin-bottom:8px}
+input,textarea{
+  width:100%;background:#fff;color:var(--text);border:1px solid #ccd8da;
+  border-radius:11px;padding:12px 13px;outline:none
+}
+input:focus,textarea:focus{
+  border-color:#15927f;box-shadow:0 0 0 3px rgba(21,146,127,.10)
+}
+textarea{min-height:120px;resize:vertical}
+.btn{
+  border:0;border-radius:10px;padding:12px 17px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,#0f6b61,#15927f);
+  box-shadow:0 7px 15px rgba(15,107,97,.16)
+}
+.btn.secondary{color:#365055;background:#f4f7f7;border:1px solid #d5dfe0;box-shadow:none}
+.btn.danger{background:linear-gradient(135deg,#e85d4f,#f08a45);color:#fff}
+.rctf{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}
+.rbox{background:#f7fbfa;border:1px solid #d7e8e4;border-radius:13px;padding:16px}
+.letter{font-size:25px;font-weight:900;color:var(--accent)}
+.en{font-weight:800;margin:5px 0}
+.ar{color:#748286; display:none;}
+body.ar-mode .en { display: none; }
+body.ar-mode .ar { display: block; color: var(--text); font-weight: 800;}
+.taskbox{background:#f8fbfb;border:1px solid #dce6e7;border-radius:15px;padding:18px;margin-top:18px}
+.task-list{line-height:1.8;color:#46565a}
+.progress-wrap{height:8px;background:#e7ecec;border-radius:20px;overflow:hidden;margin:16px 0 22px}
+.progress{height:100%;background:linear-gradient(90deg,#54bda9,#0f6b61);width:0%;transition:.3s}
+body.ar-mode .progress { float: right; }
+.timer{min-width:82px;text-align:center;padding:9px 11px;border-radius:12px;background:#fffaf0;border:1px solid #ead9ad;font-weight:900;color:#b47b00}
+.timer.warning{color:#d84f46;animation:pulse .7s infinite alternate}
+.qnum{color:#0f6b61;font-weight:900;font-size:13px;letter-spacing:1px}
+.question{font-size:22px;font-weight:800;line-height:1.45;margin:12px 0;color:#26383b}
+.option{
+  width:100%;text-align:left;padding:14px;border-radius:12px;background:#fff;
+  color:#304044;border:1px solid #d6e0e1;transition:.2s
+}
+body.ar-mode .option { text-align: right; }
+.option:hover{border-color:#15927f;transform:translateY(-1px);background:#f7fbfa}
+.option.correct{border-color:#45a878;background:rgba(69,168,120,.09)}
+.option.wrong{border-color:#e85d4f;background:rgba(232,93,79,.08)}
+.feedback{margin-top:17px;border-radius:12px;padding:14px;line-height:1.55}
+body.ar-mode .feedback { text-align: right; }
+.feedback.good{background:rgba(69,168,120,.08);border:1px solid rgba(69,168,120,.28)}
+.feedback.bad{background:rgba(232,93,79,.07);border:1px solid rgba(232,93,79,.25)}
+.result{text-align:center}
+.score-ring{background:conic-gradient(var(--accent) var(--score),#dfe8e7 0)}
+.score-ring:after{background:#fff}
+.stat{display:inline-block;padding:11px 15px;margin:6px;border:1px solid #dce4e5;border-radius:11px;background:#f8faf9}
+.success{color:#2f8e61;font-weight:900}
+.retry{color:#d65349;font-weight:900}
+.nav span{background:#dfe7e6}
+.nav span.active{background:#0f6b61}
+.small{font-size:12px;color:#738185}
+
+@media(max-width:850px){
+  .score-bar{flex-wrap:wrap}
+  .xp-area{order:5;flex-basis:100%}
+}
+@media(max-width:650px){
+  .edulixa-header{padding:15px 18px;align-items:flex-start}
+  .header-actions{gap:5px}
+  .lang-btn{display:none} /* Show it optionally if space allows, handled via JS if needed */
+  .level-badge{display:none}
+  .brand-sub{font-size:9px}
+  .rctf{grid-template-columns:repeat(2,1fr)}
+  .card{padding:20px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="edulixa-header">
+    <div class="brand-block">
+      <div class="logo-mark" aria-label="Edulixa 360 logo">🎓</div>
+      <div>
+        <div class="brand-main">Edulixa 360 <span class="quest-badge" data-en="QUIZ" data-ar="اختبار">QUIZ</span></div>
+        <div class="brand-sub" data-en="Prompt Engineering - RCTF" data-ar="هندسة الأوامر - إطار RCTF">Prompt Engineering - RCTF</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="speakIntro()" aria-label="Read instructions">🔊</button>
+      <button class="lang-btn" type="button" onclick="toggleLanguage()" id="langToggleBtn" style="display:block;">العربية</button>
+      <div class="level-badge">🏆 <span><small data-en="LEVEL 1" data-ar="المستوى ١">LEVEL 1</small><b data-en="Novice Teacher" data-ar="معلم مبتدئ">Novice Teacher</b></span></div>
+    </div>
+  </header>
+
+  <section class="score-bar">
+    <div class="score-chip">⭐ <span data-en="Score:" data-ar="النقاط:">Score:</span> <b id="headerScore">0</b></div>
+    <div class="score-chip streak">🔥 <span data-en="Streak:" data-ar="التتابع:">Streak:</span> <b id="headerStreak">0x</b></div>
+    <div class="score-chip progress-chip">🎯 <span data-en="Progress:" data-ar="التقدم:">Progress:</span> <b id="headerProgress">0 / 10</b></div>
+    <div class="xp-area">
+      <div class="xp-label"><span data-en="XP Progress" data-ar="تقدم الخبرة">XP Progress</span><span id="xpText">0 / 100 XP</span></div>
+      <div class="xp-track"><div class="xp-fill" id="xpFill"></div></div>
+    </div>
+    <button class="reset-round" onclick="restartAll()" data-en="🔄 Reset Round" data-ar="🔄 إعادة الجولة">🔄 Reset Round</button>
+  </section>
+
+  <section id="start" class="card">
+    <h1 data-en="RCTF Interactive Challenge" data-ar="تحدي RCTF التفاعلي">RCTF Interactive Challenge</h1>
+    <div class="sub" data-en="Build better prompts. Test your knowledge. Beat the clock." data-ar="اكتب أوامر أفضل. اختبر معرفتك. تسابق مع الزمن.">Build better prompts. Test your knowledge. Beat the clock.</div>
+
+    <div class="field">
+      <label for="name" data-en="Participant Name *" data-ar="اسم المشارك *">Participant Name <span style="color:#fb7185">*</span></label>
+      <input id="name" type="text" maxlength="60" autocomplete="name" placeholder="Enter your full name" data-en-placeholder="Enter your full name" data-ar-placeholder="اكتب اسمك بالكامل">
+      <div id="nameError" class="small" style="color:#fb7185;margin-top:7px;display:none" data-en="Please enter your name before starting the quiz." data-ar="من فضلك اكتب اسمك قبل بدء الاختبار.">
+        Please enter your name before starting the quiz.
+      </div>
+    </div>
+
+    <div class="rctf">
+      <div class="rbox"><div class="letter">R</div><div class="en">Role</div><div class="ar">الدور</div></div>
+      <div class="rbox"><div class="letter">C</div><div class="en">Context</div><div class="ar">السياق</div></div>
+      <div class="rbox"><div class="letter">T</div><div class="en">Task</div><div class="ar">المهمة</div></div>
+      <div class="rbox"><div class="letter">F</div><div class="en">Format</div><div class="ar">التنسيق</div></div>
+    </div>
+
+    <div class="taskbox" id="taskbox-en">
+      <h3>Mini Task</h3>
+      <div class="task-list">
+        <b>Scenario:</b> You are preparing a short science lesson for 24 learners, 40 minutes, mixed levels, with language support, no internet, and groups of four.
+        <br><br>
+        <b>Your task:</b> Write one AI prompt using all four RCTF elements. Ask the AI to explain and sequence the four named stages of the water cycle, then present the answer in a printable five-column table plus a three-item exit ticket.
+      </div>
+    </div>
+    <div class="taskbox hidden" id="taskbox-ar">
+      <h3>المهمة التطبيقية</h3>
+      <div class="task-list">
+        <b>الموقف:</b> أنت تُعد درس علوم قصيرًا لـ24 متعلمًا، مدته 40 دقيقة، بمستويات متنوعة، مع دعم لغوي، ومن دون إنترنت، والعمل في مجموعات من أربعة.
+        <br><br>
+        <b>المطلوب:</b> اكتب أمرًا واحدًا للذكاء الاصطناعي باستخدام عناصر RCTF الأربعة، واطلب منه شرح وترتيب المراحل الأربع المسماة لدورة الماء، ثم تقديم الناتج في جدول قابل للطباعة من خمسة أعمدة مع بطاقة خروج من ثلاثة بنود.
+      </div>
+    </div>
+    
+    <div style="margin-top: 15px;">
+        <textarea id="taskAnswer" placeholder="Write your RCTF prompt here..." data-en-placeholder="Write your RCTF prompt here..." data-ar-placeholder="اكتب أمر RCTF هنا..."></textarea>
+        <div class="small" data-en="Tip: Make the task contain an action that can be evaluated, not just 'make something'." data-ar="تلميح: اجعل المهمة تحتوي على فعل يمكن تقييمه، وليس مجرد صنع شيء ما.">Tip: Make the task contain an action that can be evaluated, not just 'make something'.</div>
+    </div>
+
+    <div class="actions">
+      <!-- Secondary Audio button removed as requested -->
+      <button class="btn" onclick="startQuiz()" data-en="Start Quiz" data-ar="ابدأ الاختبار">Start Quiz</button>
+    </div>
+  </section>
+
+  <section id="quiz" class="card hidden">
+    <div class="quiz-head">
+      <div>
+        <div class="qnum" id="qnum"></div>
+        <div class="small" data-en="Choose one answer • 10 points" data-ar="اختر إجابة واحدة • ١٠ درجات">Choose one answer • 10 points</div>
+      </div>
+      <div class="timer" id="timer">30</div>
+    </div>
+    <div class="nav" id="nav"></div>
+    <div class="progress-wrap"><div class="progress" id="progress"></div></div>
+    <div class="question" id="question"></div>
+    <div class="options" id="options"></div>
+    <div id="feedback"></div>
+    <div class="actions">
+      <button id="nextBtn" class="btn hidden" onclick="nextQuestion()" data-en="Next" data-ar="التالي">Next</button>
+    </div>
+  </section>
+
+  <section id="result" class="card result hidden">
+    <div class="small" data-en="FINAL RESULT" data-ar="النتيجة النهائية">FINAL RESULT</div>
+    <h1 data-en="🏆 Challenge Complete" data-ar="🏆 اكتمل التحدي">🏆 Challenge Complete</h1>
+    <div class="result-name" id="resultName"></div>
+    <div class="score-ring" id="scoreRing"><div class="score-inner" id="scoreText"></div></div>
+    <div id="resultMessage"></div>
+    <div>
+      <span class="stat"><span data-en="Mark:" data-ar="الدرجة:">Mark:</span> <b id="mark"></b> / 100</span>
+      <span class="stat"><span data-en="Correct:" data-ar="الصحيحة:">Correct:</span> <b id="correctCount"></b> / 10</span>
+      <span class="stat"><span data-en="Tries:" data-ar="المحاولات:">Tries:</span> <b id="tries"></b></span>
+    </div>
+    <div class="actions" style="justify-content:center">
+      <button id="retryBtn" class="btn danger hidden" onclick="retryQuiz()" data-en="🔄 Try Again" data-ar="🔄 حاول مرة أخرى">🔄 Try Again</button>
+      <button class="btn secondary" onclick="restartAll()" data-en="↩ Restart" data-ar="↩ إعادة البداية">↩ Restart</button>
+    </div>
+  </section>
+</div>
+<div class="confetti" id="confetti"></div>
+
+<script>
+let currentLang = 'en';
+
+function toggleLanguage() {
+    currentLang = currentLang === 'en' ? 'ar' : 'en';
+    const btn = document.getElementById('langToggleBtn');
+    
+    if (currentLang === 'ar') {
+        document.body.classList.add('ar-mode');
+        btn.textContent = 'English';
+        document.getElementById('taskbox-en').classList.add('hidden');
+        document.getElementById('taskbox-ar').classList.remove('hidden');
+    } else {
+        document.body.classList.remove('ar-mode');
+        btn.textContent = 'العربية';
+        document.getElementById('taskbox-ar').classList.add('hidden');
+        document.getElementById('taskbox-en').classList.remove('hidden');
+    }
+
+    // Update static texts safely
+    document.querySelectorAll('[data-en]').forEach(el => {
+        el.innerHTML = el.getAttribute(`data-${currentLang}`);
+    });
+
+    // Update placeholders safely
+    document.querySelectorAll('input[data-en-placeholder], textarea[data-en-placeholder]').forEach(el => {
+        el.placeholder = el.getAttribute(`data-${currentLang}-placeholder`);
+    });
+
+    // Re-render current question if quiz is active
+    if (!document.getElementById("quiz").classList.contains("hidden")) {
+        if (!answered) {
+            renderQuestion();
+        } else {
+            updateAnsweredQuestionLang();
+        }
+    }
+}
+
+// Ensure strict separation and error-free syntax for string manipulation
+function updateAnsweredQuestionLang() {
+    const q = questions[idx];
+    const buttons = [...document.querySelectorAll(".option")];
+    
+    buttons.forEach((b, i) => {
+        const optionText = currentLang === 'ar' ? q.optsAr[i] : q.opts[i];
+        b.textContent = String.fromCharCode(65+i) + ". " + optionText;
+    });
+
+    const fb = document.getElementById("feedback");
+    if (fb.innerHTML !== "") {
+        const isCorrect = fb.classList.contains("good");
+        const isTimeout = fb.innerHTML.includes("Time is up") || fb.innerHTML.includes("انتهى الوقت");
+        
+        let headerText = "";
+        if (currentLang === 'en') {
+             headerText = isCorrect ? "✓ Correct!" : "✕ Not quite.";
+             if (isTimeout) headerText += " Time is up. ";
+        } else {
+             headerText = isCorrect ? "✓ إجابة صحيحة!" : "✕ ليست صحيحة.";
+             if (isTimeout) headerText += " انتهى الوقت. ";
+        }
+        
+        const explanationText = currentLang === 'ar' ? q.expAr : q.exp;
+        fb.innerHTML = "<strong>" + headerText + "</strong>" + explanationText;
+    }
+    
+    document.getElementById("qnum").textContent = currentLang === 'ar' ? `السؤال ${idx+1} / 10` : `QUESTION ${idx+1} / 10`;
+    
+    const nextBtn = document.getElementById("nextBtn");
+    if(idx === 9) {
+        nextBtn.textContent = currentLang === 'ar' ? "عرض النتيجة" : "See Result";
+    } else {
+        nextBtn.textContent = currentLang === 'ar' ? "التالي" : "Next";
+    }
+}
+
+const questions = [
+{
+ q:"In the RCTF framework, what does R stand for?",
+ ar:"في إطار RCTF، ماذا يعني الحرف R؟",
+ opts:["Role","Result","Resource","Reason"],
+ optsAr:["الدور","النتيجة","المصدر","السبب"],
+ a:0,
+ exp:"R = Role. It defines who the AI should act as and helps set expertise and language level.",
+ expAr:"R = الدور. فهو يحدد من يجب أن يكون الذكاء الاصطناعي، ويساعد في ضبط الخبرة ومستوى اللغة."
+},
+{
+ q:"Which RCTF element describes the real situation and constraints, such as learners, time, levels and available tools?",
+ ar:"أي عنصر في RCTF يصف الموقف الحقيقي والقيود مثل عدد المتعلمين والوقت والمستويات والأدوات المتاحة؟",
+ opts:["Role","Context","Task","Format"],
+ optsAr:["الدور","السياق","المهمة","التنسيق"],
+ a:1,
+ exp:"Context gives the AI the real-world conditions that make the answer suitable for your class.",
+ expAr:"السياق يعطي الذكاء الاصطناعي الظروف الحقيقية التي تجعل الإجابة مناسبة لفصلك."
+},
+{
+ q:"Which task is more measurable?",
+ ar:"أي مهمة من التالية أكثر قابلية للتقييم والقياس؟",
+ opts:[
+ "Make something about the water cycle.",
+ "Write anything you know.",
+ "Explain and sequence the four named stages.",
+ "Tell me about science."
+ ],
+ optsAr:[
+ "اصنع شيئًا عن دورة الماء.",
+ "اكتب أي شيء تعرفه.",
+ "اشرح ورتب المراحل الأربع المسماة.",
+ "تحدث عن العلوم."
+ ],
+ a:2,
+ exp:"A strong Task contains an action that can be evaluated, such as explain, sequence, classify, compare or justify.",
+ expAr:"المهمة القوية تحتوي على فعل يمكن تقييمه مثل يشرح، يرتب، يصنف، يقارن أو يبرر."
+},
+{
+ q:"What does F (Format) mainly control?",
+ ar:"ما الذي يتحكم فيه عنصر F (التنسيق) بشكل أساسي؟",
+ opts:[
+ "Who the AI is.",
+ "The classroom constraints.",
+ "What action the AI performs.",
+ "How the answer is delivered."
+ ],
+ optsAr:[
+ "من هو الذكاء الاصطناعي.",
+ "قيود الفصل.",
+ "ما الفعل الذي ينفذه الذكاء الاصطناعي.",
+ "كيف يتم تقديم الإجابة."
+ ],
+ a:3,
+ exp:"Format determines how the output should be delivered, such as a table, checklist or printable structure.",
+ expAr:"التنسيق يحدد شكل تقديم الناتج، مثل جدول أو قائمة أو بنية قابلة للطباعة."
+},
+{
+ q:"According to the material, what is most important about the order of RCTF elements?",
+ ar:"وفقًا للمادة، ما الأهم بخصوص ترتيب عناصر RCTF؟",
+ opts:[
+ "They must always be written in R-C-T-F order.",
+ "The order matters more than the elements.",
+ "Having all four elements is more important than their order.",
+ "Only Role and Task are necessary."
+ ],
+ optsAr:[
+ "يجب كتابتها دائمًا بترتيب R-C-T-F.",
+ "الترتيب أهم من العناصر.",
+ "احتواء العناصر الأربعة كلها أهم من ترتيبها.",
+ "الدور والمهمة هما الضروريان فقط."
+ ],
+ a:2,
+ exp:"The material states that the presence of all four elements is more important than their order.",
+ expAr:"توضح المادة أن وجود العناصر الأربعة أهم من ترتيبها."
+},
+{
+ q:"For an image prompt, which item belongs to Context?",
+ ar:"في أمر إنشاء صورة، أي عنصر مما يلي يندرج تحت Context (السياق)؟",
+ opts:[
+ "Aspect ratio and resolution.",
+ "The place, objects, character and clothing.",
+ "The exact pose and lighting only.",
+ "The artist's job title only."
+ ],
+ optsAr:[
+ "نسبة الأبعاد والدقة.",
+ "المكان والأشياء والشخصية وملابسها.",
+ "الوضعية والإضاءة فقط.",
+ "وظيفة الفنان فقط."
+ ],
+ a:1,
+ exp:"Image Context describes the world of the picture: place, objects, who the character is and what they are wearing.",
+ expAr:"سياق الصورة يصف عالم الصورة: المكان والأشياء ومن تكون الشخصية وماذا ترتدي."
+},
+{
+ q:"Which is a good practice when writing an image prompt?",
+ ar:"أي ممارسة تُعد جيدة عند كتابة أمر لإنشاء صورة؟",
+ opts:[
+ "Ignore what should not appear.",
+ "Change the character description every time.",
+ "Specify what must not appear and keep the character wording consistent.",
+ "Use only one-word prompts."
+ ],
+ optsAr:[
+ "تجاهل ما لا ينبغي أن يظهر.",
+ "قم بتغيير وصف الشخصية في كل مرة.",
+ "حدّد ما لا ينبغي أن يظهر وحافظ على صياغة الشخصية ثابتة.",
+ "استخدم مطالبات مكونة من كلمة واحدة فقط."
+ ],
+ a:2,
+ exp:"The material recommends specifying exclusions and using consistent wording for the same character.",
+ expAr:"توصي المادة بتحديد ما يجب ألا يظهر، والحفاظ على ثبات صياغة وصف الشخصية نفسها."
+},
+{
+ q:"What is the 'reverse' image-prompt exercise used for?",
+ ar:"ما الهدف من تمرين استخراج الأمر العكسي من صورة؟",
+ opts:[
+ "To make images without any instructions.",
+ "To learn what a good image prompt contains and identify missing RCTF parts.",
+ "To replace the need to inspect AI images.",
+ "To change the image into a video."
+ ],
+ optsAr:[
+ "لإنشاء صور بدون أي تعليمات.",
+ "لتعرف ما يحتويه موجه الصور الجيد وتحديد أجزاء RCTF المفقودة.",
+ "للاستغناء عن الحاجة إلى فحص صور الذكاء الاصطناعي.",
+ "لتغيير الصورة إلى فيديو."
+ ],
+ a:1,
+ exp:"Reverse prompting helps learners see what a strong image prompt contains and which RCTF elements they tend to omit.",
+ expAr:"يساعد الأمر العكسي على فهم مكونات أمر الصورة الجيد وتحديد عناصر RCTF التي قد يتم نسيانها."
+},
+{
+ q:"Why should an AI-generated image be checked before showing it to learners?",
+ ar:"لماذا يجب فحص الصورة التي أنشأها الذكاء الاصطناعي قبل عرضها على المتعلمين؟",
+ opts:[
+ "Because AI always follows every instruction perfectly.",
+ "To check anatomy, stray text and culturally inappropriate content.",
+ "Because images cannot contain text.",
+ "Only to improve the file name."
+ ],
+ optsAr:[
+ "لأن الذكاء الاصطناعي يتبع كل تعليمات بدقة دائمًا.",
+ "لتحقق من التشريح، والنصوص الدخيلة، والمحتوى غير المناسب ثقافيًا.",
+ "لأن الصور لا يمكن أن تحتوي على نصوص.",
+ "فقط لتحسين اسم الملف."
+ ],
+ a:1,
+ exp:"The material specifically recommends checking anatomy, stray writing and culturally inappropriate content.",
+ expAr:"توصي المادة تحديدًا بفحص التشريح والكتابات الشاردة وأي محتوى غير مناسب ثقافيًا."
+},
+{
+ q:"According to the ChatGPT screen section, when is Work more appropriate than Chat?",
+ ar:"وفقًا لجزء شاشة ChatGPT، متى يكون Work أنسب من Chat؟",
+ opts:[
+ "For a quick question or translation.",
+ "For a short grammar correction.",
+ "For larger multi-step tasks that produce a final artifact such as a presentation or lesson plan.",
+ "Only when you want to say hello."
+ ],
+ optsAr:[
+ "سؤال سريع أو ترجمة.",
+ "لتصحيح نحوي قصير.",
+ "للمهام الكبيرة المكونة من عدة خطوات والتي تنتج عملاً نهائياً مثل عرض تقديمى أو خطة درس.",
+ "فقط عندما تريد إلقاء التحية."
+ ],
+ a:2,
+ exp:"Work is described as better for larger, multi-step tasks that produce complete outputs such as presentations, lesson plans, documents or interactive activities.",
+ expAr:"يوصف Work بأنه أنسب للمهام الكبيرة متعددة الخطوات التي تنتج مخرجات نهائية مثل عرض تقديمي أو خطة درس أو مستند أو نشاط تفاعلي."
+}
+];
+
+let name="", idx=0, score=0, tries=0, streak=0, answered=false, timerId=null, seconds=30;
+
+function beep(type){
+  try{
+    const C=window.AudioContext||window.webkitAudioContext; if(!C)return;
+    const c=new C(), o=c.createOscillator(), g=c.createGain();
+    o.connect(g);g.connect(c.destination);
+    const map={click:[500,.06],good:[740,.16],bad:[190,.2],tick:[900,.035],win:[880,.18]};
+    const [freq,dur]=map[type]||map.click;
+    o.frequency.value=freq; o.type=type==="bad"?"sawtooth":"sine";
+    g.gain.setValueAtTime(.0001,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.08,c.currentTime+.01);
+    g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+dur);
+    o.start();o.stop(c.currentTime+dur+.02);
+  }catch(e){}
+}
+
+function speak(text){
+  if(!("speechSynthesis" in window))return;
+  speechSynthesis.cancel(); 
+  let u;
+  
+  if (text) {
+      u = new SpeechSynthesisUtterance(text);
+      u.lang = /[\u0600-\u06FF]/.test(text) ? "ar-SA" : "en-US";
+  } else {
+      // Determine what to read based on current screen
+      const isStart = !document.getElementById("start").classList.contains("hidden");
+      const isQuiz = !document.getElementById("quiz").classList.contains("hidden");
+      
+      if (isStart) {
+           const enText = "RCTF Interactive Challenge. Role, Context, Task, Format. You have ten questions and thirty seconds for each question.";
+           const arText = "تحدي آر سي تي إف التفاعلي. الدور، السياق، المهمة، التنسيق. لديك عشرة أسئلة وثلاثون ثانية لكل سؤال.";
+           u = new SpeechSynthesisUtterance(currentLang === 'ar' ? arText : enText);
+           u.lang = currentLang === 'ar' ? "ar-SA" : "en-US";
+      } else if (isQuiz) {
+           const q = questions[idx];
+           const qText = currentLang === 'ar' ? q.ar : q.q;
+           const optsText = currentLang === 'ar' ? q.optsAr.join(". ") : q.opts.join(". ");
+           u = new SpeechSynthesisUtterance(qText + ". " + optsText);
+           u.lang = currentLang === 'ar' ? "ar-SA" : "en-US";
+      } else {
+           return;
+      }
+  }
+  
+  u.rate = 0.95; 
+  speechSynthesis.speak(u);
+}
+
+function speakIntro() {
+    speak(); // Uses logic above to determine what to speak
+}
+
+updateHeaderStats();
+
+function startQuiz(){
+  const input=document.getElementById("name");
+  const err=document.getElementById("nameError");
+  name=input.value.trim();
+
+  if(!name){
+    err.style.display="block";
+    input.classList.remove("shake"); void input.offsetWidth; input.classList.add("shake");
+    input.focus();
+    beep("bad");
+    return;
+  }
+
+  err.style.display="none";
+  idx=0;score=0;streak=0;answered=false;tries=1;
+  document.getElementById("start").classList.add("hidden");
+  document.getElementById("result").classList.add("hidden");
+  document.getElementById("quiz").classList.remove("hidden");
+  renderQuestion(); beep("click");
+}
+
+function updateHeaderStats(){
+  const hs=document.getElementById("headerScore");
+  const hst=document.getElementById("headerStreak");
+  const hp=document.getElementById("headerProgress");
+  const hf=document.getElementById("xpFill");
+  const ht=document.getElementById("xpText");
+
+  if(hs)hs.textContent=score;
+  if(hst)hst.textContent=streak+"x";
+  const answeredCount=Math.min(idx+(answered?1:0),10);
+  if(hp)hp.textContent=answeredCount+" / 10";
+  if(hf)hf.style.width=Math.min(score,100)+"%";
+  if(ht)ht.textContent=Math.min(score,100)+" / 100 XP";
+}
+
+function renderQuestion(){
+  answered=false; clearInterval(timerId); seconds=30;
+  document.getElementById("timer").textContent=seconds;
+  document.getElementById("timer").classList.remove("warning");
+  const q=questions[idx];
+  updateHeaderStats();
+  
+  document.getElementById("qnum").textContent = currentLang === 'ar' ? `السؤال ${idx+1} / 10` : `QUESTION ${idx+1} / 10`;
+  document.getElementById("question").textContent = currentLang === 'ar' ? q.ar : q.q;
+  
+  document.getElementById("progress").style.width=((idx)/10*100)+"%";
+  const nav=document.getElementById("nav"); nav.innerHTML="";
+  for(let i=0;i<10;i++){const s=document.createElement("span");if(i<=idx)s.className="active";nav.appendChild(s)}
+  
+  const box=document.getElementById("options");box.innerHTML="";
+  const optionsArray = currentLang === 'ar' ? q.optsAr : q.opts;
+  
+  optionsArray.forEach((opt,i)=>{
+    const b=document.createElement("button");
+    b.className="option";
+    b.textContent=String.fromCharCode(65+i)+". "+opt;
+    b.onclick=()=>choose(i);
+    box.appendChild(b);
+  });
+  
+  document.getElementById("feedback").innerHTML="";
+  document.getElementById("nextBtn").classList.add("hidden");
+  timerId=setInterval(()=>{
+    seconds--; document.getElementById("timer").textContent=seconds;
+    if(seconds<=8)document.getElementById("timer").classList.add("warning");
+    if(seconds<=5 && seconds>0)beep("tick");
+    if(seconds<=0){clearInterval(timerId);choose(-1);}
+  },1000);
+}
+
+function choose(choice){
+  if(answered)return; answered=true; clearInterval(timerId);
+  const q=questions[idx], buttons=[...document.querySelectorAll(".option")];
+  buttons.forEach(b=>b.disabled=true);
+  buttons[q.a].classList.add("correct");
+  const correct=choice===q.a;
+  
+  if(!correct && choice>=0)buttons[choice].classList.add("wrong");
+  
+  if(correct){
+    score+=10; streak++; updateHeaderStats(); beep("good");
+    document.getElementById("quiz").classList.remove("shake");
+  } else {
+    streak=0; updateHeaderStats(); beep("bad");
+    document.getElementById("quiz").classList.remove("shake"); void document.getElementById("quiz").offsetWidth;
+    document.getElementById("quiz").classList.add("shake");
+  }
+  
+  const fb=document.getElementById("feedback");
+  fb.className="feedback "+(correct?"good":"bad");
+  
+  let headerText = "";
+  if (currentLang === 'en') {
+       headerText = correct ? "✓ Correct!" : "✕ Not quite.";
+       if(choice === -1) headerText += " Time is up. ";
+  } else {
+       headerText = correct ? "✓ إجابة صحيحة!" : "✕ ليست صحيحة.";
+       if(choice === -1) headerText += " انتهى الوقت. ";
+  }
+  
+  const explanationText = currentLang === 'ar' ? q.expAr : q.exp;
+  
+  // Safe string concatenation completely preventing SyntaxError
+  fb.innerHTML = "<strong>" + headerText + "</strong>" + explanationText;
+  
+  document.getElementById("nextBtn").classList.remove("hidden");
+  
+  if (idx === 9) {
+      document.getElementById("nextBtn").textContent = currentLang === 'ar' ? "عرض النتيجة" : "See Result";
+  } else {
+      document.getElementById("nextBtn").textContent = currentLang === 'ar' ? "التالي" : "Next";
+  }
+}
+
+function nextQuestion(){
+  if(!answered)return;
+  idx++;
+  if(idx>=10)showResult(); else renderQuestion();
+}
+
+function showResult(){
+  clearInterval(timerId);
+  document.getElementById("quiz").classList.add("hidden");
+  document.getElementById("result").classList.remove("hidden");
+  const pct=score;
+  document.getElementById("resultName").textContent=name;
+  document.getElementById("mark").textContent=score;
+  document.getElementById("correctCount").textContent=score/10;
+  document.getElementById("tries").textContent=tries;
+  document.getElementById("scoreText").textContent=score+"%";
+  document.getElementById("scoreRing").style.setProperty("--score",pct+"%");
+  
+  const msg=document.getElementById("resultMessage");
+  const retry=document.getElementById("retryBtn");
+  
+  if(score<50){
+    const failMsg = currentLang === 'ar' ? 'درجتك أقل من 50%. حاول مرة أخرى لتحسين نتيجتك!' : 'You scored less than 50%. Try again to improve your result!';
+    msg.innerHTML = '<div class="retry">' + failMsg + '</div>';
+    retry.classList.remove("hidden");
+  }else{
+    const passMsg = currentLang === 'ar' ? 'أحسنت! لقد اجتزت التحدي.' : 'Great job! You passed the challenge.';
+    msg.innerHTML = '<div class="success">' + passMsg + '</div>';
+    retry.classList.add("hidden"); beep("win"); confetti();
+  }
+}
+
+function retryQuiz(){
+  tries++;
+  idx=0;score=0;streak=0;
+  document.getElementById("result").classList.add("hidden");
+  document.getElementById("quiz").classList.remove("hidden");
+  renderQuestion(); beep("click");
+}
+
+function restartAll(){
+  clearInterval(timerId); idx=0;score=0;tries=0;streak=0;name=""; updateHeaderStats();
+  document.getElementById("result").classList.add("hidden");
+  document.getElementById("quiz").classList.add("hidden");
+  document.getElementById("start").classList.remove("hidden");
+}
+
+function confetti(){
+  const c=document.getElementById("confetti");c.innerHTML="";
+  for(let i=0;i<55;i++){
+    const x=document.createElement("i");
+    x.style.left=Math.random()*100+"%";x.style.animationDelay=Math.random()*.8+"s";
+    x.style.transform=`rotate(${Math.random()*360}deg)`;
+    x.style.background=["#5eead4","#60a5fa","#fbbf24","#4ade80","#fb7185"][i%5];
+    c.appendChild(x);
+  }
+  setTimeout(()=>c.innerHTML="",4500);
+}
+</script>
+</body>
+</html>
